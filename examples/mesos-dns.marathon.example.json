@@ -1,0 +1,52 @@
+{
+    "id": "/mesos-dns",
+    "instances": 1,
+    "cpus": 0.5,
+    "mem": 512,
+    "constraints": [
+        [
+            "hostname",
+            "CLUSTER",
+            "10.10.111"
+        ]
+    ],
+    "container": {
+        "type": "DOCKER",
+        "docker": {
+            "image": "registry.address/mesos-dns",
+            "network": "HOST"
+        }
+    },
+    "env": {
+        "ENVIRONMENT": "production",
+        "MESOSDNS_ZK": "zk://10.10.0.11:2181,10.10.0.12:2181,10.10.0.13:2181/mesos",
+        "MESOSDNS_MASTERS_1": "10.10.0.11:5050",
+        "MESOSDNS_MASTERS_2": "10.10.0.12:5050",
+        "MESOSDNS_MASTERS_3": "10.10.0.13:5050",
+        "MESOSDNS_RESOLVERS_1": "8.8.8.8",
+        "MESOSDNS_RESOLVERS_2": "8.8.4.4",
+        "MESOSDNS_DOMAIN": "mesos",
+        "MESOSDNS_REFRESHSECONDS": "60",
+        "MESOSDNS_TTL": "60",
+        "MESOSDNS_TIMEOUT": "5",
+        "MESOSDNS_PORT": "53",
+        "MESOSDNS_HTTPORT": "8123"
+    },
+    "healthChecks": [
+        {
+            "protocol": "COMMAND",
+            "command": {
+                "value": "curl -f -X GET http://$HOST:8123/v1/version"
+            },
+            "gracePeriodSeconds": 30,
+            "timeoutSeconds": 60,
+            "maxConsecutiveFailures": 5
+        }
+    ],
+    "backoffSeconds": 1,
+    "backoffFactor": 1.5,
+    "maxLaunchDelaySeconds": 3600,
+    "uris": [
+        "file: ///docker.tar.gz"
+    ]
+}
