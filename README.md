@@ -4,8 +4,8 @@ An Ubuntu based container - built for running the Mesos-DNS support service. It 
 
 
 ##### Version Information:
-* **Container Release:** 1.0.0
-* **Mesos-DNS:** v0.1.2
+* **Container Release:** 1.1.0
+* **Mesos-DNS:** 0.4.0
 
 ##### Services Include:
 * **[Mesos-DNS](#mesos-dns)** - A small application that provides DNS as a method of service discovery for applications launched via Mesos and it's associated frameworks.
@@ -286,6 +286,7 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 | `MSOSDNS_EXPIRE`          | `86400`                                                     |
 | `MSOSDNS_SOAMINTTL`       | `60`                                                        |
 | `MSOSDNS_RECURSEON`       | `true`                                                      |
+| `MESOSDNS_IPSOURCES_###`  | `netinfo`, `mesos`, `host`                                  |
 | `SERVICE_MESOSDNS_CMD`    | /usr/bin/mesos-dns -config="$MESOSDNS_CONF" $MESOSDNS_OPTS" |
 
 
@@ -320,7 +321,7 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `MESOSDNS_PORT` - Is the port number that Mesos-DNS monitors for incoming DNS requests. Requests can be sent over TCP or UDP. We recommend you use port `53` as several applications assume that the DNS server listens to this port. The default value is `53`.
 
-* `MESOSDNS_RESOLVERS_###` - ALL `MESOSDNS_RESOLVERS_###` are converted to a comma separated list with the IP addresses of external DNS servers that Mesos-DNS will contact to resolve any DNS requests outside the domain. We recommend that you list the nameservers specified in the `/etc/resolv.conf` on the server Mesos-DNS is running. Alternatively, you can list 8.8.8.8, which is the Google public DNS address. The resolvers field is **required**.
+* `MESOSDNS_RESOLVERS_###` - ALL `MESOSDNS_RESOLVERS_###` are converted to a json list with the IP addresses of external DNS servers that Mesos-DNS will contact to resolve any DNS requests outside the domain. We recommend that you list the nameservers specified in the `/etc/resolv.conf` on the server Mesos-DNS is running. Alternatively, you can list 8.8.8.8, which is the Google public DNS address. The resolvers field is **required**.
 
 * `MESOSDNS_TIMEOUT` - Is the timeout threshold, in seconds, for connections and requests to external DNS requests. The default value is 5 seconds.
 
@@ -348,6 +349,8 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 * `MESOSDNS_SOAMINTTL` - Is the minimum TTL field in the SOA record for the Mesos domain. For details, see the [RFC-1035](http://tools.ietf.org/html/rfc1035#page-18). The default value is `60`.
 
 * `MESOSDNS_RECURSEON` - Controls if the DNS replies for names in the Mesos domain will indicate that recursion is available. The default value is `true`.
+
+* `MESOSDNS_IPSOURCES_###` - All `MESOSDNS_IPSOURCES_###` are converted to a json list that define the fallback order of IP sources for task records, sorted by priority. Options include: `host`, `mesos`, `docker`, and `netinfo`.
 
 ```
 Usage of mesos-dns:

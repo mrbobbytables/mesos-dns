@@ -52,16 +52,29 @@ init_vars() {
 
 
 config_mesos_dns() {
+
+  local masters_arr=()
+  local masters=""
+  local resolvers_arr=()
+  local resolvers=""
+  local ipsource_arr=()
+  local ipsources=""
+
+
+
   echo "{" > "$MESOSDNS_CONF"
   for i in $(compgen -A variable | awk '/^MESOSDNS_/ && !/MESOSDNS_AUTOCONF/ && !/MESOSDNS_CONF/ && !/MESOSDNS_OPTS/'); do
-    var_name="$(echo "${i:9}" | awk '{print tolower($0)}')"
-    var_value="${!i}"
+    local var_name="$(echo "${i:9}" | awk '{print tolower($0)}')"
+    local var_value="${!i}"
     case $var_name in
       masters_*)
         masters_arr+=( "$var_value" )
         ;;
       resolvers_*)
         resolvers_arr+=( "$var_value" )
+        ;;
+      ipsources_*)
+        ipsource_arr+=( "$var_value" )
         ;;
       domain|listener|soamname|soarname|zk)
         echo "\"$var_name\": \"$var_value\"," >> "$MESOSDNS_CONF"
@@ -71,19 +84,37 @@ config_mesos_dns() {
         ;;
       esac
   done
+
   masters="\"masters\": ["
   for master in "${masters_arr[@]}"; do
-      masters+=" \"$master\","
+    masters+=" \"$master\","
   done
   masters="${masters::-1} ],"
-  echo "$masters" >> "$MESOSDNS_CONF"
 
   resolvers="\"resolvers\": ["
   for resolver in "${resolvers_arr[@]}"; do
-      resolvers+=" \"$resolver\","
+    resolvers+=" \"$resolver\","
   done
-  resolvers="${resolvers::-1} ]"
-  echo "$resolvers" >> "$MESOSDNS_CONF"
+  resolvers="${resolvers::-1} ],"
+
+  if [[ ${#ipsource_arr[@]} -ne 0 ]]; then
+    ipsources="\"ipsources\": ["
+    for ipsource in "${ipsource_arr[@]}"; do
+      ipsources+=" \"$ipsource\","
+    done
+    ipsources="${ipsources::-1} ]"
+  fi
+
+  echo "$masters" >> "$MESOSDNS_CONF"
+
+  if [[ ! $ipsources ]]; then
+    resolvers="${resolvers::-1}"
+    echo "$resolvers" >> "$MESOSDNS_CONF"
+  else
+    echo "$resolvers" >> "$MESOSDNS_CONF"
+    echo "$ipsources" >> "$MESOSDNS_CONF"
+  fi
+
   echo "}" >> "$MESOSDNS_CONF"
 }
 
