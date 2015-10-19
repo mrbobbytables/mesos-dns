@@ -4,8 +4,8 @@ An Ubuntu based container - built for running the Mesos-DNS support service. It 
 
 
 ##### Version Information:
-* **Container Release:** 1.0.0
-* **Mesos-DNS:** v0.1.2
+* **Container Release:** 1.1.0
+* **Mesos-DNS:** 0.4.0
 
 ##### Services Include:
 * **[Mesos-DNS](#mesos-dns)** - A small application that provides DNS as a method of service discovery for applications launched via Mesos and it's associated frameworks.
@@ -151,13 +151,13 @@ mesos-dns
 ### Modification and Anatomy of the Project
 
 **File Structure**
-The directory `skel` in the project root maps to the root of the filesystem once the container is built. Files and folders placed there will map to their corrisponding location within the container.
+The directory `skel` in the project root maps to the root of the filesystem once the container is built. Files and folders placed there will map to their corresponding location within the container.
 
 **Init**
-The init script (`./init.sh`) found at the root of the directory is the entry process for the container. It's role is to simply set specific environment variables and modify any subsiquently required configuration files.
+The init script (`./init.sh`) found at the root of the directory is the entry process for the container. It's role is to simply set specific environment variables and modify any subsequently required configuration files.
 
 **Supervisord**
-All supervisord configs can be found in `/etc/supervisor/conf.d/`. Services by default will redirect their stdout to `/dev/fd/1` and stderr to `/dev/fd/2` allowing for service's console output to be displayed. Most applications can log to both stdout and their respecively specified log file. 
+All supervisord configs can be found in `/etc/supervisor/conf.d/`. Services by default will redirect their stdout to `/dev/fd/1` and stderr to `/dev/fd/2` allowing for service's console output to be displayed. Most applications can log to both stdout and their respectively specified log file. 
 
 In some cases (such as with zookeeper), it is possible to specify different logging levels and formats for each location.
 
@@ -261,32 +261,35 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 #### Mesos-DNS
 
-| **Variable**              | **Default**                                                 |
-|---------------------------|-------------------------------------------------------------|
-| `MESOSDNS_AUTOCONF`       | `enabled`                                                   |
-| `MESOSDNS_CONF`           | `/etc/mesos-dns/config.json`                                |
-| `MESOSDNS_OPTS`           |                                                             |
-| `MESOSDNS_ZK`             |                                                             |
-| `MESOSDNS_MASTERS_###`    |                                                             |
-| `MESOSDNS_REFRESHSECONDS` | `60`                                                        |
-| `MESOSDNS_TTL`            | `60`                                                        |
-| `MESOSDNS_DOMAIN`         | `mesos`                                                     |
-| `MESOSDNS_PORT`           | `53`                                                        |
-| `MESOSDNS_RESOLVERS_###`  |                                                             |
-| `MESOSDNS_TIMEOUT`        | `5`                                                         |
-| `MESOSDNS_HTTPON`         | `true`                                                      |
-| `MESOSDNS_DNSON`          | `true`                                                      |
-| `MESOSDNS_HTTPPORT`       | `8123`                                                      |
-| `MESOSDNS_EXTERNALON`     | `true`                                                      |
-| `MSOSDNS_LISTENER`        | `0.0.0.0`                                                   |
-| `MSOSDNS_SOAMNAME`        | `ns1.mesos`                                                 |
-| `MSOSDNS_SOARNAME`        | `root.ns1.mesos`                                            |
-| `MSOSDNS_SOAREFRESH`      | `60`                                                        |
-| `MSOSDNS_RETRY`           | `600`                                                       |
-| `MSOSDNS_EXPIRE`          | `86400`                                                     |
-| `MSOSDNS_SOAMINTTL`       | `60`                                                        |
-| `MSOSDNS_RECURSEON`       | `true`                                                      |
-| `SERVICE_MESOSDNS_CMD`    | /usr/bin/mesos-dns -config="$MESOSDNS_CONF" $MESOSDNS_OPTS" |
+| **Variable**                  | **Default**                                                   |
+|-------------------------------|---------------------------------------------------------------|
+| `MESOSDNS_AUTOCONF`           | `enabled`                                                     |
+| `MESOSDNS_CONF`               | `/etc/mesos-dns/config.json`                                  |
+| `MESOSDNS_OPTS`               |                                                               |
+| `MESOSDNS_ZK`                 |                                                               |
+| `MESOSDNS_ZKDETECTIONTIMEOUT` | `30`                                                          |
+| `MESOSDNS_MASTERS_###`        |                                                               |
+| `MESOSDNS_REFRESHSECONDS`     | `60`                                                          |
+| `MESOSDNS_TTL`                | `60`                                                          |
+| `MESOSDNS_DOMAIN`             | `mesos`                                                       |
+| `MESOSDNS_PORT`               | `53`                                                          |
+| `MESOSDNS_RESOLVERS_###`      |                                                               |
+| `MESOSDNS_TIMEOUT`            | `5`                                                           |
+| `MESOSDNS_HTTPON`             | `true`                                                        |
+| `MESOSDNS_DNSON`              | `true`                                                        |
+| `MESOSDNS_HTTPPORT`           | `8123`                                                        |
+| `MESOSDNS_EXTERNALON`         | `true`                                                        |
+| `MESOSDNS_LISTENER`           | `0.0.0.0`                                                     |
+| `MESOSDNS_SOAMNAME`           | `ns1.mesos`                                                   |
+| `MESOSDNS_SOARNAME`           | `root.ns1.mesos`                                              |
+| `MESOSDNS_SOAREFRESH`         | `60`                                                          |
+| `MESOSDNS_RETRY`              | `600`                                                         |
+| `MESOSDNS_EXPIRE`             | `86400`                                                       |
+| `MESOSDNS_SOAMINTTL`          | `60`                                                          |
+| `MESOSDNS_RECURSEON`          | `true`                                                        |
+| `MESOSDNS_ENFORCERFC952`      | `false`                                                       |
+| `MESOSDNS_IPSOURCES_###`      | `netinfo`, `mesos`, `host`                                    |
+| `SERVICE_MESOSDNS_CMD`        | `/usr/bin/mesos-dns -config="$MESOSDNS_CONF" $MESOSDNS_OPTS"` |
 
 
 ##### Description
@@ -301,14 +304,16 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 
 ##### Mesos-DNS configuration options:
-**Notes:** 
-	
+**Notes:**
+
 1. These descriptions are taken right from the [Mesos-DNS documentation page](http://mesosphere.github.io/mesos-dns/docs/configuration-parameters.html) with a few corrections and slightly modified to fit how they're used in this project. They are listed here for convenience.
 2. It is sufficient to specify just one of the `MESOSDNS_ZK` or `MESOSDNS_MASTERS_###`. If both are defined, Mesos-DNS will first attempt to detect the leading master through Zookeeper. If Zookeeper is not responding, it will fall back to using the masters field. Both zk and master fields are static. To update them you need to restart Mesos-DNS. We recommend you use the zk field since this allows the dynamic addition to Mesos masters.
 
 ##### Description
 
 * `MESOSDNS_ZK` -`MESOSDNS_ZK` is a link to the Zookeeper instances on the Mesos cluster. Its format is `zk://host1:port1,host2:port2/mesos/`, where the number of hosts can be one or more. The default port for Zookeeper is 2181. Mesos-DNS will monitor the Zookeeper instances to detect the current leading master.
+
+* `MESOSDNS_ZKDETECTIONTIMEOUT` - Time in seconds for Zookeeper to report a new Mesos leading master. If this threshold is crossed, Mesos-DNS will exit. Default value is `30`.
 
 * `MESOSDNS_MASTERS_###` - All `MESOSDNS_MASTERS_###` are converted to comma separated list with the IP address and port number for the master(s) in the Mesos cluster. Mesos-DNS will automatically find the leading master at any point in order to retrieve state about running tasks. If there is no leading master or the leading master is not responsive, Mesos-DNS will continue serving DNS requests based on stale information about running tasks. The `masters` field is **required**.
 
@@ -320,7 +325,7 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `MESOSDNS_PORT` - Is the port number that Mesos-DNS monitors for incoming DNS requests. Requests can be sent over TCP or UDP. We recommend you use port `53` as several applications assume that the DNS server listens to this port. The default value is `53`.
 
-* `MESOSDNS_RESOLVERS_###` - ALL `MESOSDNS_RESOLVERS_###` are converted to a comma separated list with the IP addresses of external DNS servers that Mesos-DNS will contact to resolve any DNS requests outside the domain. We recommend that you list the nameservers specified in the `/etc/resolv.conf` on the server Mesos-DNS is running. Alternatively, you can list 8.8.8.8, which is the Google public DNS address. The resolvers field is **required**.
+* `MESOSDNS_RESOLVERS_###` - ALL `MESOSDNS_RESOLVERS_###` are converted to a json list with the IP addresses of external DNS servers that Mesos-DNS will contact to resolve any DNS requests outside the domain. We recommend that you list the nameservers specified in the `/etc/resolv.conf` on the server Mesos-DNS is running. Alternatively, you can list 8.8.8.8, which is the Google public DNS address. The resolvers field is **required**.
 
 * `MESOSDNS_TIMEOUT` - Is the timeout threshold, in seconds, for connections and requests to external DNS requests. The default value is 5 seconds.
 
@@ -348,6 +353,10 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 * `MESOSDNS_SOAMINTTL` - Is the minimum TTL field in the SOA record for the Mesos domain. For details, see the [RFC-1035](http://tools.ietf.org/html/rfc1035#page-18). The default value is `60`.
 
 * `MESOSDNS_RECURSEON` - Controls if the DNS replies for names in the Mesos domain will indicate that recursion is available. The default value is `true`.
+
+* `MESOSDNS_ENFORCERCF952` - Enables an older stricter set of rules for DNS labels. For more information, see [RFC-952](https://tools.ietf.org/html/rfc952). Default value is `false`.
+
+* `MESOSDNS_IPSOURCES_###` - All `MESOSDNS_IPSOURCES_###` are converted to a json list that define the fallback order of IP sources for task records, sorted by priority. Options include: `host`, `mesos`, `docker`, and `netinfo`.
 
 ```
 Usage of mesos-dns:
@@ -433,7 +442,7 @@ Redpill - Supervisor status monitor. Terminates the supervisor process if any sp
 
 -c | --cleanup    Optional path to cleanup script that should be executed upon exit.
 -h | --help       This help text.
--i | --inerval    Optional interval at which the service check is performed in seconds. (Default: 30)
+-i | --interval    Optional interval at which the service check is performed in seconds. (Default: 30)
 -s | --service    A comma delimited list of the supervisor service names that should be monitored.
 ```
 
@@ -445,3 +454,5 @@ Redpill - Supervisor status monitor. Terminates the supervisor process if any sp
 In the event of an issue, the `ENVIRONMENT` variable can be set to `debug` to stop the container from shipping logs and terminating in the event of a fatal error. This will also automatically set the log verbosity to very verbose (log level 2).
 
 For specific issues, please see the Mesos-DNS documentation on [troubleshooting](http://mesosphere.github.io/mesos-dns/docs/faq.html).
+
+
