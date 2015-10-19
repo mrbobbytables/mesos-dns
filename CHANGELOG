@@ -1,0 +1,4 @@
+2015-10-19 - 1.1.0:
+  - Mesos DNS bumped to 0.4.0
+  - Reworked Dockerfile to use binary instead of compiling
+  - Fixed minor error in docs

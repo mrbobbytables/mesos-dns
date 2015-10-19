@@ -1,13 +1,11 @@
 ################################################################################
-# mesos-dns:1.0.1
-# Date: 9/27/2015
+# mesos-dns:1.1.0
+# Date: 10/19/2015
 # Mesos-DNS Version: 0.4.0
 #
 # Description:
-# Provides DNS for almost all services hosted in Mesos. It has not had a new 
-# version released since 4/16/2015, and multiple bug-fixes added to master
-# since. 
-################################################################################
+# Provides DNS for almost all services hosted in Mesos. 
+#################################################################################
 
 FROM mrbobbytables/ubuntu-base:1.0.0
 MAINTAINER Bob Killen / killen.bob@gmail.com / @mrbobbytables

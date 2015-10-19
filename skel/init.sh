@@ -73,13 +73,15 @@ config_mesos_dns() {
       resolvers_*)
         resolvers_arr+=( "$var_value" )
         ;;
-      ipsources_*)
+      ipsource_*)
         ipsource_arr+=( "$var_value" )
         ;;
+      # string values  
       domain|listener|soamname|soarname|zk)
         echo "\"$var_name\": \"$var_value\"," >> "$MESOSDNS_CONF"
         ;;
-      dnson|externalon|httpon|httpport|port|recurseon|refreshseconds|soaexpire|soaminttl|soarefresh|soaretry|timeout|ttl)
+      # bool or int values
+      dnson|enforcerfc952|externalon|httpon|httpport|port|recurseon|refreshseconds|soaexpire|soaminttl|soarefresh|soaretry|timeout|ttl|zkdetectiontimeout)
         echo "\"$var_name\": $var_value," >> "$MESOSDNS_CONF"
         ;;
       esac
