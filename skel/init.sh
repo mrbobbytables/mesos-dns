@@ -24,25 +24,29 @@ init_vars() {
   export MESOSDNS_AUTOCONF=${MESOSDNS_AUTOCONF:-enabled}
   export MESOSDNS_CONF=${MESOSDNS_CONF:-/etc/mesos-dns/config.json}
 
+  export SERVICE_LOGROTATE_SCRIPT=${SERVICE_LOGROTATE_SCRIPT:-/opt/scripts/purge-mdns-logs.sh}
   export SERVICE_LOGSTASH_FORWARDER_CONF=${SERVICE_LOGSTASH_FORWARDER_CONF:-/opt/logstash-forwarder/mesos-dns.conf}
   export SERVICE_REDPILL_MONITOR=${SERVICE_REDPILL_MONITOR:-mesos-dns}
 
 
   case "${ENVIRONMENT,,}" in
     prod|production|dev|development)
+      export SERVICE_LOGROTATE=${SERVICE_LOGROTATE:-enabled}
       export SERVICE_LOGSTASH_FORWARDER=${SERVICE_LOGSTASH_FORWARDER:-enabled}
       export SERVICE_REDPILL=${SERVICE_REDPILL:-enabled}
       export MESOSDNS_OPTS=${MESOSDNS_OPTS:-"-log_dir=/var/log/mesos-dns"}
       ;;
     debug)
+      export SERVICE_LOGROTATE=${SERVICE_LOGROTATE:-disabled}
       export SERVICE_LOGSTASH_FORWARDER=${SERVICE_LOGSTASH_FORWARDER:-disabled}
       export SERVICE_REDPILL=${SERVICE_REDPILL:-disabled}
       export MESOSDNS_OPTS=${MESOSDNS_OPTS:-"-v=2 -logtostderr=true"}
       ;;
     local|*)
+      export SERVICE_LOGROTATE=${SERVICE_LOGROTATE:-enabled}
       export SERVICE_LOGSTASH_FORWARDER=${SERVICE_LOGSTASH_FORWARDER:-disabled}
       export SERVICE_REDPILL=${SERVICE_REDPILL:-enabled}
-      export MESOSDNS_OPTS=${MESOSDNS_OPTS:-"-logtostderr=true"}
+      export MESOSDNS_OPTS=${MESOSDNS_OPTS:-"-log_dir=/var/log/mesos-dns -alsologtostderr=true"}
       ;;
   esac
  
@@ -81,7 +85,8 @@ config_mesos_dns() {
         echo "\"$var_name\": \"$var_value\"," >> "$MESOSDNS_CONF"
         ;;
       # bool or int values
-      dnson|enforcerfc952|externalon|httpon|httpport|port|recurseon|refreshseconds|soaexpire|soaminttl|soarefresh|soaretry|timeout|ttl|zkdetectiontimeout)
+      dnson|enforcerfc952|externalon|httpon|httpport|port|recurseon|refreshseconds| \
+      soaexpire|soaminttl|soarefresh|soaretry|statetimeoutseconds|timeout|ttl|zkdetectiontimeout)
         echo "\"$var_name\": $var_value," >> "$MESOSDNS_CONF"
         ;;
       esac
@@ -127,6 +132,7 @@ main() {
   echo "[$(date)][App-Name] $APP_NAME"
   echo "[$(date)][Environment] $ENVIRONMENT"
 
+  __config_service_logrotate
   __config_service_logstash_forwarder
   __config_service_redpill
 
