@@ -4,11 +4,12 @@ An Ubuntu based container - built for running the Mesos-DNS support service. It 
 
 
 ##### Version Information:
-* **Container Release:** 1.1.0
-* **Mesos-DNS:** 0.4.0
+* **Container Release:** 1.2.0
+* **Mesos-DNS:** 0.5.1
 
 ##### Services Include:
 * **[Mesos-DNS](#mesos-dns)** - A small application that provides DNS as a method of service discovery for applications launched via Mesos and it's associated frameworks.
+* **[Logrotate](#logrotate)** - A script and application that aid in pruning log files.
 * **[Logstash-Forwarder](#logstash-forwarder)** - A lightweight log collector and shipper for use with [Logstash](https://www.elastic.co/products/logstash).
 * **[Redpill](#redpill)** - A bash script and healthcheck for supervisord managed services. It is capable of running cleanup scripts that should be executed upon container termination.
 
@@ -24,6 +25,7 @@ An Ubuntu based container - built for running the Mesos-DNS support service. It 
 * [Important Environment Variables](#important-environment-variables)
 * [Service Configuration](#service-configuration)
  * [Mesos-DNS](#mesos-dns)
+ * [Logrotate](#logrotate)
  * [Logstash-Forwarder](#logstash-forwarder)
  * [Redpill](#redpill)
 * [Troubleshooting](#troubleshooting)
@@ -63,7 +65,7 @@ For Marathon based deployments; if healthchecks are going to be used - the Mesos
 
 ### Example Run Command
 
-```
+```bash
 docker run -d --net=host \
 -e ENVIRONMENT=production \
 -e PARENT_HOST=$(hostname) \
@@ -86,7 +88,7 @@ mesos-dns
 
 ### Example Marathon App Definition
 
-```
+```json
 {
     "id": "/mesos-dns",
     "instances": 1,
@@ -187,6 +189,9 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 | `MESOSDNS_ZK`                     |                                          |
 | `MESOSDNS_RESOLVERS_###`          |                                          |
 | `MESOSDNS_LISTENER`               | `0.0.0.0`                                |
+| `SERVICE_LOGROTATE`               |                                          |
+| `SERVICE_LOGROTATE_INTERVAL`      | `3600` (set in script by default)        |
+| `SERVICE_LOGROTATE_SCRIPT`        | `/opt/scripts/purge-mdns-logs.sh`        |
 | `SERVICE_LOGSTASH_FORWARDER`      |                                          |
 | `SERVICE_LOGSTASH_FORWARDER_CONF` | `/opt/logstash-forwarder/mesos-dns.conf` |
 | `SERVICE_REDPILL`                 |                                          |
@@ -214,6 +219,12 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `MESOSDNS_LISTENER` - It is the IP address of Mesos-DNS. In SOA replies, Mesos-DNS identifies hostname mesos-dns.domain as the primary nameserver for the domain. It uses this IP address in an A record for mesos-dns.domain. The default value is "0.0.0.0", which instructs Mesos-DNS to create an A record for every IP address associated with a network interface on the server that runs the Mesos-DNS process.
 
+* `SERVICE_LOGROTATE` - Enables or disabled the Logrotate service. This will be set automatically depending on the environment. (**Options:** `enabled` or `disabled`)
+
+* `SERVICE_LOGROTATE_INTERVAL` - The time in seconds between runs of logrotate or the logrotate script. The default (3600 or 1 hour) is set by default in the logrotate script automatically.
+
+* `SERVICE_LOGROTATE_SCRIPT` - The path to the script that should be executed instead of logrotate itself to clean up logs.
+
 * `SERVICE_LOGSTASH_FORWARDER` - Enables or disables the Logstash-Forwarder service. Set automatically depending on the `ENVIRONMENT`. See the Environment section below.  (**Options:** `enabled` or `disabled`)
 
 * `SERVICE_LOGSTASH_FORWARDER_CONF` - The path to the logstash-forwarder configuration.
@@ -229,17 +240,19 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `local` (default)
 
-| **Variable**                 | **Default**           |
-|------------------------------|-----------------------|
-| `SERVICE_LOGSTASH_FORWARDER` | `disabled`            |
-| `SERVICE_REDPILL`            | `enabled`             |
-| `MESOSDNS_OPTS`              | `-logtostderr=true`   |
+| **Variable**                 | **Default**                                         |
+|------------------------------|-----------------------------------------------------|
+| `SERVICE_LOGROTATE`          | `enabled`                                           |
+| `SERVICE_LOGSTASH_FORWARDER` | `disabled`                                          |
+| `SERVICE_REDPILL`            | `enabled`                                           |
+| `MESOSDNS_OPTS`              | `-log_dir=/var/log/mesos-dns -alsologtostderr=true` |
 
 
 * `prod`|`production`|`dev`|`development`
 
 | **Variable**                 | **Default**                     |
 |------------------------------|---------------------------------|
+| `SERVICE_LOGROTATE`          | `disabled`                      |
 | `SERVICE_LOGSTASH_FORWARDER` | `enabled`                       |
 | `SERVICE_REDPILL`            | `enabled`                       |
 | `MESOSDNS_OPTS`              | `-log_dir=/var/log/mesos-dns`   |
@@ -247,8 +260,9 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `debug`
 
-| **Variable**                 | **DefaulT**                |
+| **Variable**                 | **Default**                |
 |------------------------------|----------------------------|
+| `SERVICE_LOGROTATE`          | `disabled`                 |
 | `SERVICE_LOGSTASH_FORWARDER` | `disabled`                 |
 | `SERVICE_REDPILL`            | `disabled`                 |
 | `MESOSDNS_OPTS`              | `-v=2 -logtostderr=true`   |
@@ -261,35 +275,36 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 #### Mesos-DNS
 
-| **Variable**                  | **Default**                                                   |
-|-------------------------------|---------------------------------------------------------------|
-| `MESOSDNS_AUTOCONF`           | `enabled`                                                     |
-| `MESOSDNS_CONF`               | `/etc/mesos-dns/config.json`                                  |
-| `MESOSDNS_OPTS`               |                                                               |
-| `MESOSDNS_ZK`                 |                                                               |
-| `MESOSDNS_ZKDETECTIONTIMEOUT` | `30`                                                          |
-| `MESOSDNS_MASTERS_###`        |                                                               |
-| `MESOSDNS_REFRESHSECONDS`     | `60`                                                          |
-| `MESOSDNS_TTL`                | `60`                                                          |
-| `MESOSDNS_DOMAIN`             | `mesos`                                                       |
-| `MESOSDNS_PORT`               | `53`                                                          |
-| `MESOSDNS_RESOLVERS_###`      |                                                               |
-| `MESOSDNS_TIMEOUT`            | `5`                                                           |
-| `MESOSDNS_HTTPON`             | `true`                                                        |
-| `MESOSDNS_DNSON`              | `true`                                                        |
-| `MESOSDNS_HTTPPORT`           | `8123`                                                        |
-| `MESOSDNS_EXTERNALON`         | `true`                                                        |
-| `MESOSDNS_LISTENER`           | `0.0.0.0`                                                     |
-| `MESOSDNS_SOAMNAME`           | `ns1.mesos`                                                   |
-| `MESOSDNS_SOARNAME`           | `root.ns1.mesos`                                              |
-| `MESOSDNS_SOAREFRESH`         | `60`                                                          |
-| `MESOSDNS_RETRY`              | `600`                                                         |
-| `MESOSDNS_EXPIRE`             | `86400`                                                       |
-| `MESOSDNS_SOAMINTTL`          | `60`                                                          |
-| `MESOSDNS_RECURSEON`          | `true`                                                        |
-| `MESOSDNS_ENFORCERFC952`      | `false`                                                       |
-| `MESOSDNS_IPSOURCES_###`      | `netinfo`, `mesos`, `host`                                    |
-| `SERVICE_MESOSDNS_CMD`        | `/usr/bin/mesos-dns -config="$MESOSDNS_CONF" $MESOSDNS_OPTS"` |
+| **Variable**                   | **Default**                                                   |
+|--------------------------------|---------------------------------------------------------------|
+| `MESOSDNS_AUTOCONF`            | `enabled`                                                     |
+| `MESOSDNS_CONF`                | `/etc/mesos-dns/config.json`                                  |
+| `MESOSDNS_OPTS`                |                                                               |
+| `MESOSDNS_ZK`                  |                                                               |
+| `MESOSDNS_ZKDETECTIONTIMEOUT`  | `30`                                                          |
+| `MESOSDNS_MASTERS_###`         |                                                               |
+| `MESOSDNS_REFRESHSECONDS`      | `60`                                                          |
+| `MESOSDNS_TTL`                 | `60`                                                          |
+| `MESOSDNS_DOMAIN`              | `mesos`                                                       |
+| `MESOSDNS_PORT`                | `53`                                                          |
+| `MESOSDNS_RESOLVERS_###`       |                                                               |
+| `MESOSDNS_TIMEOUT`             | `5`                                                           |
+| `MESOSDNS_HTTPON`              | `true`                                                        |
+| `MESOSDNS_DNSON`               | `true`                                                        |
+| `MESOSDNS_HTTPPORT`            | `8123`                                                        |
+| `MESOSDNS_EXTERNALON`          | `true`                                                        |
+| `MESOSDNS_LISTENER`            | `0.0.0.0`                                                     |
+| `MESOSDNS_SOAMNAME`            | `ns1.mesos`                                                   |
+| `MESOSDNS_SOARNAME`            | `root.ns1.mesos`                                              |
+| `MESOSDNS_SOAREFRESH`          | `60`                                                          |
+| `MESOSDNS_STATETIMEOUTSECONDS` | `300`                                                         |
+| `MESOSDNS_RETRY`               | `600`                                                         |
+| `MESOSDNS_EXPIRE`              | `86400`                                                       |
+| `MESOSDNS_SOAMINTTL`           | `60`                                                          |
+| `MESOSDNS_RECURSEON`           | `true`                                                        |
+| `MESOSDNS_ENFORCERFC952`       | `false`                                                       |
+| `MESOSDNS_IPSOURCES_###`       | `netinfo`, `mesos`, `host`, `docker`                          |
+| `SERVICE_MESOSDNS_CMD`         | `/usr/bin/mesos-dns -config="$MESOSDNS_CONF" $MESOSDNS_OPTS"` |
 
 
 ##### Description
@@ -306,7 +321,7 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 ##### Mesos-DNS configuration options:
 **Notes:**
 
-1. These descriptions are taken right from the [Mesos-DNS documentation page](http://mesosphere.github.io/mesos-dns/docs/configuration-parameters.html) with a few corrections and slightly modified to fit how they're used in this project. They are listed here for convenience.
+1. These descriptions are taken right from the [Mesos-DNS documentation page](http://mesosphere.github.io/mesos-dns/docs/configuration-parameters.html) with a few modifications to fit how they're used in this project. They are listed here for convenience.
 2. It is sufficient to specify just one of the `MESOSDNS_ZK` or `MESOSDNS_MASTERS_###`. If both are defined, Mesos-DNS will first attempt to detect the leading master through Zookeeper. If Zookeeper is not responding, it will fall back to using the masters field. Both zk and master fields are static. To update them you need to restart Mesos-DNS. We recommend you use the zk field since this allows the dynamic addition to Mesos masters.
 
 ##### Description
@@ -352,6 +367,8 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `MESOSDNS_SOAMINTTL` - Is the minimum TTL field in the SOA record for the Mesos domain. For details, see the [RFC-1035](http://tools.ietf.org/html/rfc1035#page-18). The default value is `60`.
 
+* `MESOSDNS_STATETIMEOUTSECONDS` - The time, in seconds that Mesos-DNS will wait for the Mesos master to respond to it's requests for state.json. The default value is `300`.
+
 * `MESOSDNS_RECURSEON` - Controls if the DNS replies for names in the Mesos domain will indicate that recursion is available. The default value is `true`.
 
 * `MESOSDNS_ENFORCERCF952` - Enables an older stricter set of rules for DNS labels. For more information, see [RFC-952](https://tools.ietf.org/html/rfc952). Default value is `false`.
@@ -371,6 +388,105 @@ Usage of mesos-dns:
   -version=false: output the version
   -vmodule=: comma-separated list of pattern=N settings for file-filtered logging
   ```
+
+
+---
+
+### Logrotate
+
+The logrotate script is a small simple script that will either call and execute logrotate on a given interval; or execute a supplied script. This is useful for applications that do not perform their own log cleanup.
+
+#### Logrotate Environment Variables
+
+##### Defaults
+
+| **Variable**                 | **Default**                        |
+|------------------------------|------------------------------------|
+| `SERVICE_LOGROTATE`          |                                    |
+| `SERVICE_LOGROTATE_INTERVAL` | `3600`                             |
+| `SERVICE_LOGROTATE_CONFIG`   |                                    |
+| `SERVICE_LOGROTATE_SCRIPT`   | `/opt/scripts/purge-mdns-logs.sh`  |
+| `SERVICE_LOGROTATE_FORCE`    |                                    |
+| `SERVICE_LOGROTATE_VERBOSE`  |                                    |
+| `SERVICE_LOGROTATE_DEBUG`    |                                    |
+| `SERVICE_LOGROTATE_CMD`      | `/opt/script/logrotate.sh <flags>` |
+
+##### Description
+
+* `SERVICE_LOGROTATE` - Enables or disables the Logrotate service. Set automatically depending on the `ENVIRONMENT`. See the Environment section.  (**Options:** `enabled` or `disabled`)
+
+* `SERVICE_LOGROTATE_INTERVAL` - The time in seconds between run of either the logrotate command or the provided logrotate script. Default is set to `3600` or 1 hour in the script itself.
+
+* `SERVICE_LOGROTATE_CONFIG` - The path to the logrotate config file. If neither config or script is provided, it will default to `/etc/logrotate.conf`.
+
+* `SERVICE_LOGROTATE_SCRIPT` - A script that should be executed on the provided interval. Useful to do cleanup of logs for applications that already handle rotation, or if additional processing is required.
+
+* `SERVICE_LOGROTATE_FORCE` - If present, passes the 'force' command to logrotate. Will be ignored if a script is provided.
+
+* `SERVICE_LOGROTATE_VERBOSE` - If present, passes the 'verbose' command to logrotate. Will be ignored if a script is provided.
+
+* `SERVICE_LOGROTATE_DEBUG` - If present, passed the 'debug' command to logrotate. Will be ignored if a script is provided.
+
+* `SERVICE_LOGROTATE_CMD` - The command that is passed to supervisor. If overriding, must be an escaped python string expression. Please see the [Supervisord Command Documentation](http://supervisord.org/configuration.html#program-x-section-settings) for further information.
+
+
+##### Logrotate Script Help Text
+```
+root@ec58ca7459cb:/opt/scripts# ./logrotate.sh --help
+logrotate.sh - Small wrapper script for logrotate.
+-i | --interval     The interval in seconds that logrotate should run.
+-c | --config       Path to the logrotate config.
+-s | --script       A script to be executed in place of logrotate.
+-f | --force        Forces log rotation.
+-v | --verbose      Display verbose output.
+-d | --debug        Enable debugging, and implies verbose output. No state file changes.
+-h | --help         This usage text.
+```
+
+##### Supplied Cleanup Script
+
+The below cleanup script will remove all but the latest 5 rotated logs.
+**Note:** This script **WILL** restart the mesos-dns service to trigger log-rotation. This should not impact services.
+
+```bash
+#!/bin/bash
+
+mld=${MESOSDNS_LOG_DIR:-/var/log/mesos-dns}
+
+cd "$mld"
+
+#logrotate trigger --
+lr_trigger=false
+
+if [[ -h mesos-dns.INFO ]]; then
+  info_size=$(ls -la --block-size=M $(readlink mesos-dns.INFO) | awk '{print substr($5, 0, length($5))}')
+  if [[ $info_size -ge 10 ]]; then
+    lr_trigger=true
+  fi
+fi
+
+if [[ -h mesos-dns.ERROR ]]; then
+  error_size=$(ls -la --block-size=M $(readlink mesos-dns.ERROR) | awk '{print substr($5, 0, length($5))}')
+  if [[ $error_size -ge 10 ]]; then
+    lr_trigger=true
+  fi
+fi
+
+if [[ -h mesos-dns.WARNING ]]; then
+  warning_size=$(ls -la --block-size=M $(readlink mesos-dns.WARNING) | awk '{print substr($5, 0, length($5))}')
+  if [[ $warning_size -ge 10 ]]; then
+    lr_trigger=true
+  fi
+fi
+
+if [[ $lr_trigger == true  ]]; then
+  supervisorctl restart mesos-dns
+fi
+
+(ls -t | grep 'log.INFO.*'|head -n 5;ls)|sort|uniq -u|grep 'log.INFO.*'|xargs --no-run-if-empty rm
+(ls -t | grep 'log.ERROR.*'|head -n 5;ls)|sort|uniq -u|grep 'log.ERROR.*'|xargs --no-run-if-empty rm
+(ls -t | grep 'log.WARNING.*'|head -n 5;ls)|sort|uniq -u|grep 'log.WARNING.*'|xargs --no-run-if-empty rm
+```
 
 ---
 
