@@ -61,7 +61,7 @@ config_mesos_dns() {
   local masters=""
   local resolvers_arr=()
   local resolvers=""
-  local ipsource_arr=()
+  local ipsources_arr=()
   local ipsources=""
 
 
@@ -77,8 +77,8 @@ config_mesos_dns() {
       resolvers_*)
         resolvers_arr+=( "$var_value" )
         ;;
-      ipsource_*)
-        ipsource_arr+=( "$var_value" )
+      ipsources_*)
+        ipsources_arr+=( "$var_value" )
         ;;
       # string values  
       domain|listener|soamname|soarname|zk)
@@ -104,9 +104,9 @@ config_mesos_dns() {
   done
   resolvers="${resolvers::-1} ],"
 
-  if [[ ${#ipsource_arr[@]} -ne 0 ]]; then
+  if [[ ${#ipsources_arr[@]} -ne 0 ]]; then
     ipsources="\"ipsources\": ["
-    for ipsource in "${ipsource_arr[@]}"; do
+    for ipsource in "${ipsources_arr[@]}"; do
       ipsources+=" \"$ipsource\","
     done
     ipsources="${ipsources::-1} ]"

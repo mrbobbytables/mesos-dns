@@ -4,7 +4,7 @@ An Ubuntu based container - built for running the Mesos-DNS support service. It 
 
 
 ##### Version Information:
-* **Container Release:** 1.2.0
+* **Container Release:** 1.2.1
 * **Mesos-DNS:** 0.5.1
 
 ##### Services Include:
