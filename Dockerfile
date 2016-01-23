@@ -15,7 +15,6 @@ ENV VERSION_MESOSDNS=0.5.1
 RUN apt-get update      \
  && apt-get -y install  \
     wget                \
-    vim  \
  && wget -O /usr/local/bin/mesos-dns \
     https://github.com/mesosphere/mesos-dns/releases/download/v${VERSION_MESOSDNS}/mesos-dns-v${VERSION_MESOSDNS}-linux-amd64  \
  && chmod +x /usr/local/bin/mesos-dns  \
