@@ -24,6 +24,12 @@ init_vars() {
   export MESOSDNS_AUTOCONF=${MESOSDNS_AUTOCONF:-enabled}
   export MESOSDNS_CONF=${MESOSDNS_CONF:-/etc/mesos-dns/config.json}
 
+  # if consul template is to be used, configure rsyslog
+  export SERVICE_CONSUL_TEMPLATE=${SERVICE_CONSUL_TEMPLATE:-disabled}
+  if [[ "$SERVICE_CONSUL_TEMPLATE" == "enabled" ]]; then
+    export SERVICE_RSYSLOG=${SERVICE_RSYSLOG:-enabled}
+  fi
+
   export SERVICE_LOGROTATE_SCRIPT=${SERVICE_LOGROTATE_SCRIPT:-/opt/scripts/purge-mdns-logs.sh}
   export SERVICE_LOGSTASH_FORWARDER_CONF=${SERVICE_LOGSTASH_FORWARDER_CONF:-/opt/logstash-forwarder/mesos-dns.conf}
   export SERVICE_REDPILL_MONITOR=${SERVICE_REDPILL_MONITOR:-mesos-dns}
@@ -41,6 +47,9 @@ init_vars() {
       export SERVICE_LOGSTASH_FORWARDER=${SERVICE_LOGSTASH_FORWARDER:-disabled}
       export SERVICE_REDPILL=${SERVICE_REDPILL:-disabled}
       export MESOSDNS_OPTS=${MESOSDNS_OPTS:-"-v=2 -logtostderr=true"}
+      if [[ "$SERVICE_CONSUL_TEMPLATE" == "enabled" ]]; then
+        export CONSUL_TEMPLATE_LOG_LEVEL=${CONSUL_TEMPLATE_LOG_LEVEL:-debug}
+      fi
       ;;
     local|*)
       export SERVICE_LOGROTATE=${SERVICE_LOGROTATE:-enabled}
@@ -132,9 +141,11 @@ main() {
   echo "[$(date)][App-Name] $APP_NAME"
   echo "[$(date)][Environment] $ENVIRONMENT"
 
+  __config_service_consul_template
   __config_service_logrotate
   __config_service_logstash_forwarder
   __config_service_redpill
+  __config_service_rsyslog
 
   if [[ "${MESOSDNS_AUTOCONF,,}" == "enabled" ]]; then
     config_mesos_dns
