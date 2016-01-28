@@ -26,10 +26,6 @@ init_vars() {
 
   # if consul template is to be used, configure rsyslog
   export SERVICE_CONSUL_TEMPLATE=${SERVICE_CONSUL_TEMPLATE:-disabled}
-  if [[ "$SERVICE_CONSUL_TEMPLATE" == "enabled" ]]; then
-    export SERVICE_RSYSLOG=${SERVICE_RSYSLOG:-enabled}
-  fi
-
   export SERVICE_LOGROTATE_SCRIPT=${SERVICE_LOGROTATE_SCRIPT:-/opt/scripts/purge-mdns-logs.sh}
   export SERVICE_LOGSTASH_FORWARDER_CONF=${SERVICE_LOGSTASH_FORWARDER_CONF:-/opt/logstash-forwarder/mesos-dns.conf}
   export SERVICE_REDPILL_MONITOR=${SERVICE_REDPILL_MONITOR:-mesos-dns}
@@ -58,7 +54,11 @@ init_vars() {
       export MESOSDNS_OPTS=${MESOSDNS_OPTS:-"-log_dir=/var/log/mesos-dns -alsologtostderr=true"}
       ;;
   esac
- 
+
+  if [[ "$SERVICE_CONSUL_TEMPLATE" == "enabled" ]]; then
+    export SERVICE_RSYSLOG=${SERVICE_RSYSLOG:-enabled}
+  fi
+
   mesos_dns_cmd="$(__escape_svsr_txt "/usr/local/bin/mesos-dns -config=\"$MESOSDNS_CONF\" $MESOSDNS_OPTS")"
   export SERVICE_MESOSDNS_CMD=${SERVICE_MESOSDNS_CMD:-"$mesos_dns_cmd"}
 }

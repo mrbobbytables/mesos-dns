@@ -9,9 +9,11 @@ An Ubuntu based container - built for running the Mesos-DNS support service. It 
 
 ##### Services Include:
 * **[Mesos-DNS](#mesos-dns)** - A small application that provides DNS as a method of service discovery for applications launched via Mesos and it's associated frameworks.
+* **[Consul-Template](#consul-template)** - An application that can populate configs from a consul service.
 * **[Logrotate](#logrotate)** - A script and application that aid in pruning log files.
 * **[Logstash-Forwarder](#logstash-forwarder)** - A lightweight log collector and shipper for use with [Logstash](https://www.elastic.co/products/logstash).
 * **[Redpill](#redpill)** - A bash script and healthcheck for supervisord managed services. It is capable of running cleanup scripts that should be executed upon container termination.
+* **[Rsyslog](#rsyslog)** - The system logging daemon.
 
 ---
 ---
@@ -25,9 +27,11 @@ An Ubuntu based container - built for running the Mesos-DNS support service. It 
 * [Important Environment Variables](#important-environment-variables)
 * [Service Configuration](#service-configuration)
  * [Mesos-DNS](#mesos-dns)
+ * [Consul-Template](#consul-template)
  * [Logrotate](#logrotate)
  * [Logstash-Forwarder](#logstash-forwarder)
  * [Redpill](#redpill)
+ * [Rsyslog](#rsyslog)
 * [Troubleshooting](#troubleshooting)
 
 ---
@@ -143,9 +147,6 @@ mesos-dns
 }
 ```
 
-**Note:**
-* The example assumes a v1.6+ version of docker or a v2 version of the docker registry. For information on using an older version or connecting to a v1 registry, please see the [private registry](https://mesosphere.github.io/marathon/docs/native-docker-private-registry.html) section of the Marathon documentation.
-
 
 ---
 ---
@@ -189,6 +190,7 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 | `MESOSDNS_ZK`                     |                                          |
 | `MESOSDNS_RESOLVERS_###`          |                                          |
 | `MESOSDNS_LISTENER`               | `0.0.0.0`                                |
+| `SERVICE_CONSUL_TEMPLATE`         | `disabled`                               |
 | `SERVICE_LOGROTATE`               |                                          |
 | `SERVICE_LOGROTATE_INTERVAL`      | `3600` (set in script by default)        |
 | `SERVICE_LOGROTATE_SCRIPT`        | `/opt/scripts/purge-mdns-logs.sh`        |
@@ -196,6 +198,9 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 | `SERVICE_LOGSTASH_FORWARDER_CONF` | `/opt/logstash-forwarder/mesos-dns.conf` |
 | `SERVICE_REDPILL`                 |                                          |
 | `SERVICE_REDPILL_MONITOR`         | `mesos-dns`                              |
+| `SERVICE_RSYSLOG`                 | `disabled` *                             |
+
+\* `SERVICE_RSYSLOG` is automatically enabled if `SERVICE_CONSUL_TEMPLATE` is enabled to ensure logging.
 
 ##### Description
 
@@ -219,6 +224,8 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `MESOSDNS_LISTENER` - It is the IP address of Mesos-DNS. In SOA replies, Mesos-DNS identifies hostname mesos-dns.domain as the primary nameserver for the domain. It uses this IP address in an A record for mesos-dns.domain. The default value is "0.0.0.0", which instructs Mesos-DNS to create an A record for every IP address associated with a network interface on the server that runs the Mesos-DNS process.
 
+* `SERVICE_CONSUL_TEMPLATE` - Enables or disables the consul-template service. (**Options:** `enabled` or `disabled`)
+
 * `SERVICE_LOGROTATE` - Enables or disabled the Logrotate service. This will be set automatically depending on the environment. (**Options:** `enabled` or `disabled`)
 
 * `SERVICE_LOGROTATE_INTERVAL` - The time in seconds between runs of logrotate or the logrotate script. The default (3600 or 1 hour) is set by default in the logrotate script automatically.
@@ -233,6 +240,7 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 * `SERVICE_REDPILL_MONITOR` - The name of the supervisord service(s) that the Redpill service check script should monitor.
 
+* `SERVICE_RSYSLOG` - Enables of disables the rsyslog service. This is managed by `SERVICE_CONSUL_TEMPLATE`, but can be enabled/disabled manually.
 
 ---
 
@@ -252,7 +260,7 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 
 | **Variable**                 | **Default**                     |
 |------------------------------|---------------------------------|
-| `SERVICE_LOGROTATE`          | `disabled`                      |
+| `SERVICE_LOGROTATE`          | `enabled`                       |
 | `SERVICE_LOGSTASH_FORWARDER` | `enabled`                       |
 | `SERVICE_REDPILL`            | `enabled`                       |
 | `MESOSDNS_OPTS`              | `-log_dir=/var/log/mesos-dns`   |
@@ -266,6 +274,9 @@ Below is the minimum list of variables to be aware of when deploying the Mesos-D
 | `SERVICE_LOGSTASH_FORWARDER` | `disabled`                 |
 | `SERVICE_REDPILL`            | `disabled`                 |
 | `MESOSDNS_OPTS`              | `-v=2 -logtostderr=true`   |
+| `CONSUL_TEMPLATE_LOG_LEVEL`  | `debug`*                   |
+
+\* Only set if `SERVICE_CONSUL_TEMPLATE` is set to `enabled`.
 
 
 ---
@@ -392,6 +403,26 @@ Usage of mesos-dns:
 
 ---
 
+
+### Consul-Template
+
+Provides initial configuration of consul-template. Variables prefixed with `CONSUL_TEMPLATE_` will automatically be passed to the consul-template service at runtime, e.g. `CONSUL_TEMPLATE_SSL_CA_CERT=/etc/consul/certs/ca.crt` becomes `-ssl-ca-cert="/etc/consul/certs/ca.crt"`. If managing the application configuration is handled via file configs, no other variables must be passed at runtime.
+
+#### Consul-Template Environment Variables
+
+##### Defaults
+
+| **Variable**                  | **Default**                           |
+|-------------------------------|---------------------------------------|
+| `CONSUL_TEMPLATE_CONFIG`      | `/etc/consul/template/conf.d`         |
+| `CONSUL_TEMPLATE_SYSLOG`      | `true`                                |
+| `SERVICE_CONSUL_TEMPLATE`     |                                       |
+| `SERVICE_CONSUL_TEMPLATE_CMD` | `consul-template <CONSUL_TEMPLATE_*>` |
+
+
+---
+
+
 ### Logrotate
 
 The logrotate script is a small simple script that will either call and execute logrotate on a given interval; or execute a supplied script. This is useful for applications that do not perform their own log cleanup.
@@ -486,6 +517,11 @@ fi
 (ls -t | grep 'log.INFO.*'|head -n 5;ls)|sort|uniq -u|grep 'log.INFO.*'|xargs --no-run-if-empty rm
 (ls -t | grep 'log.ERROR.*'|head -n 5;ls)|sort|uniq -u|grep 'log.ERROR.*'|xargs --no-run-if-empty rm
 (ls -t | grep 'log.WARNING.*'|head -n 5;ls)|sort|uniq -u|grep 'log.WARNING.*'|xargs --no-run-if-empty rm
+
+#consul-template uses rsyslog for logging, need to run logrotate to handle that log
+if [[ "$SERVICE_CONSUL_TEMPLATE" == "enabled" ]]; then
+  /usr/sbin/logrotate /etc/logrotate.conf
+fi
 ```
 
 ---
@@ -561,6 +597,28 @@ Redpill - Supervisor status monitor. Terminates the supervisor process if any sp
 -i | --interval    Optional interval at which the service check is performed in seconds. (Default: 30)
 -s | --service    A comma delimited list of the supervisor service names that should be monitored.
 ```
+
+---
+
+### Rsyslog
+Rsyslog is a high performance log processing daemon. For any modifications to the config, it is best to edit the rsyslog configs directly (`/etc/rsyslog.conf` and `/etc/rsyslog.d/*`).
+
+##### Defaults
+
+| **Variable**                      | **Default**                                      |
+|-----------------------------------|--------------------------------------------------|
+| `SERVICE_RSYSLOG`                 | `disabled`                                       |
+| `SERVICE_RSYSLOG_CONF`            | `/etc/rsyslog.conf`                              |
+| `SERVICE_RSYSLOG_CMD`             | `/usr/sbin/rsyslogd -n -f $SERVICE_RSYSLOG_CONF` |
+
+##### Description
+
+* `SERVICE_RSYSLOG` - Enables or disables the rsyslog service. This will automatically be set depending on what other services are enabled. (**Options:** `enabled` or `disabled`)
+
+* `SERVICE_RSYSLOG_CONF` - The path to the rsyslog configuration file.
+
+* `SERVICE_RSYSLOG_CMD` -  The command that is passed to supervisor. If overriding, must be an escaped python string expression. Please see the [Supervisord Command Documentation](http://supervisord.org/configuration.html#program-x-section-settings) for further information.
+
 
 ---
 ---
